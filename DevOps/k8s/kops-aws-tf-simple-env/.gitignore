@@ -1,0 +1,36 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
+*.tfvars.backup
+
+# Secrets
+secrets/*.yaml
+!secrets/*.example
+!secrets/*.yaml.example
+
+# kops
+kops-config.yaml
+kops-secrets.yaml
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+

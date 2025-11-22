@@ -1,0 +1,9 @@
+# Packer build artifacts
+packer_cache/
+*.box
+
+# Sensitive configuration files
+*.secret
+*.token
+*.key
+

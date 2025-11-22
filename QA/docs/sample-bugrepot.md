@@ -3,13 +3,13 @@
 ---
 
 ### Bug Report 1: Invalid Promo Code Error Message Not Displayed
-**Bug ID**: BR-002  
+**Bug ID**: JIRA-001  
 **Component**: Checkout  
-**Test Case ID**: CHK-MIN-02  
+**Test Case ID**: CHK-MIN-01  
 **Priority**: Medium  
 **Severity**: Medium  
 **Environment**: Firefox (latest), Staging environment, Mobile (iOS)  
-**Reported Date**: October 25, 2025  
+**Reported Date**: January 01, 2025  
 **Reported By**: QA Engineer  
 
 **Summary**: Entering an invalid promo code does not display an error message, confusing users.  
@@ -37,7 +37,7 @@
 ---
 
 ### Bug Report 2: Navigating to other page Loses Cart Contents
-**Bug ID**: JIRA-003  
+**Bug ID**: JIRA-002 
 **Component**: Checkout  
 **Test Case ID**: CHK-MIN-XX
 **Priority**: High  
@@ -72,15 +72,15 @@
 
 ---
 
-### Bug Report 4: Payment Form Accepts Invalid Card Number Without Validation
-**Bug ID**: BR-005  
+### Bug Report 3: Payment Form Accepts Invalid Card Number Without Validation
+**Bug ID**: JIRA-003  
 **Component**: Payment  
-**Test Case ID**: PAY-MIN-01  
+**Test Case ID**: PAY-MIN-XX  
 **Priority**: High  
 **Severity**: High  
 **Environment**: Chrome (latest), Staging environment, Mobile (Android)  
-**Reported Date**: October 25, 2025  
-**Reported By**: QA Engineer  
+**Reported Date**: [DATE]
+**Reported By**: [QA]
 
 **Summary**: Payment form submits with an invalid card number, causing a server error.  
 

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  petstore-api:
+    image: swaggerapi/petstore:latest
+    container_name: petstore-api
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - test-network
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pytest-tests
+    depends_on:
+      petstore-api:
+        condition: service_healthy
+    environment:
+      - API_BASE_URL=http://petstore-api:8080/api
+      - API_TIMEOUT=30
+      - API_VERIFY_SSL=false
+    volumes:
+      - ./reports:/app/reports
+      - ./test-results:/app/test-results
+    networks:
+      - test-network
+    command: >
+      sh -c "
+        echo 'Waiting for Petstore API to be ready...' &&
+        sleep 5 &&
+        echo 'Running pytest tests...' &&
+        pytest -v --tb=short --html=reports/report.html --self-contained-html --junitxml=test-results/junit.xml --cov=. --cov-report=html:reports/coverage --cov-report=term
+      "
+
+networks:
+  test-network:
+    driver: bridge

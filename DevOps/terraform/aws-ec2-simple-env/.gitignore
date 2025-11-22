@@ -1,0 +1,14 @@
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+
+# log files
+*.log
+*.logs
+*.log.*
+
+# SSH keys ( IF USE TO GENERATE KEY PAIR)
+*.pem
+*.pub
+!*.pub.example

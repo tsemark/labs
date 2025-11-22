@@ -1,0 +1,116 @@
+apiVersion: kops.k8s.io/v1alpha2
+kind: Cluster
+metadata:
+  name: kops-simple-cluster.k8s.local
+spec:
+  # Kubernetes version
+  kubernetesVersion: 1.28.0
+  
+  # Cloud provider
+  cloudProvider: aws
+  
+  # Network configuration
+  networking:
+    # AWS VPC CNI for networking
+    amazonvpc: {}
+    # Network CIDR
+    networkCIDR: 10.0.0.0/16
+    # Subnet configuration
+    subnets:
+      - name: ap-southeast-1a
+        type: Private
+        zone: ap-southeast-1a
+        cidr: 10.0.10.0/24
+      - name: ap-southeast-1b
+        type: Private
+        zone: ap-southeast-1b
+        cidr: 10.0.11.0/24
+      - name: utility-ap-southeast-1a
+        type: Utility
+        zone: ap-southeast-1a
+        cidr: 10.0.1.0/24
+      - name: utility-ap-southeast-1b
+        type: Utility
+        zone: ap-southeast-1b
+        cidr: 10.0.2.0/24
+  
+  # API server configuration
+  api:
+    loadBalancer:
+      type: Public
+      # Use internal load balancer for better security
+      # type: Internal
+  
+  # DNS configuration
+  dnsZone: k8s.local
+  
+  # SSH access configuration
+  sshAccess:
+    - "10.0.0.0/16"  # Restrict to VPC CIDR
+  
+  # IAM configuration
+  iam:
+    allowContainerRegistry: true
+    legacy: false
+  
+  # Encryption at rest
+  encryptionConfig: true
+  
+  # EBS CSI driver configuration
+  externalCloudControllerManager:
+    cloudControllerManager:
+      enableLeaderMigration: true
+  
+  # Additional cluster settings
+  additionalPolicies:
+    node: |
+      [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "ec2:DescribeInstances",
+            "ec2:DescribeRegions"
+          ],
+          "Resource": "*"
+        }
+      ]
+  
+  # Service account issuer
+  serviceAccountIssuer: https://api.kops-simple-cluster.k8s.local
+  
+  # Etcd configuration
+  etcdClusters:
+    - name: main
+      etcdMembers:
+        - instanceGroup: control-plane
+          name: ap-southeast-1a
+      version: 3.5.7
+      enableEtcdTLS: true
+      enableTLSAuth: true
+      enableEncryption: true
+  
+  # Control plane configuration
+  controlPlaneKubelet:
+    # Enable feature gates for CSI
+    featureGates:
+      CSINodeInfo: true
+      CSIDriverRegistry: true
+      VolumeSnapshotDataSource: true
+      CSIVolumeFSGroupPolicy: true
+      TokenRequest: true
+      TokenRequestProjection: true
+  
+  # Kubelet configuration
+  kubelet:
+    anonymousAuth: false
+    authenticationTokenWebhook: true
+    authorizationMode: Webhook
+    readOnlyPort: 0
+    featureGates:
+      CSINodeInfo: true
+      CSIDriverRegistry: true
+      VolumeSnapshotDataSource: true
+      CSIVolumeFSGroupPolicy: true
+      TokenRequest: true
+      TokenRequestProjection: true
+

@@ -1,0 +1,189 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ebs-csi-controller-sa
+  namespace: kube-system
+  annotations:
+    eks.amazonaws.com/role-arn: <WORKER_NODE_IAM_ROLE_ARN>
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ebs-csi-controller
+  namespace: kube-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ebs-csi-controller
+  template:
+    metadata:
+      labels:
+        app: ebs-csi-controller
+    spec:
+      serviceAccountName: ebs-csi-controller-sa
+      priorityClassName: system-cluster-critical
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: ebs-plugin
+          image: public.ecr.aws/ebs-csi-driver/ebs-csi-driver:v1.20.0
+          args:
+            - --endpoint=$(CSI_ENDPOINT)
+            - --logtostderr
+            - --v=2
+            - --volume-attach-limit=25
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secret
+                  key: access-key-id
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-secret
+                  key: secret-access-key
+                  optional: true
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          ports:
+            - name: healthz
+              containerPort: 9808
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 10
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+        - name: csi-provisioner
+          image: public.ecr.aws/eks-distro/kubernetes-csi/external-provisioner:v3.3.0-eks-1-28-0
+          args:
+            - --csi-address=$(ADDRESS)
+            - --default-fstype=ext4
+            - --feature-gates=Topology=true
+            - --http-endpoint=:8080
+            - --leader-election
+            - --timeout=300s
+            - --v=2
+            - --extra-create-metadata
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+        - name: csi-attacher
+          image: public.ecr.aws/eks-distro/kubernetes-csi/external-attacher:v4.2.0-eks-1-28-0
+          args:
+            - --csi-address=$(ADDRESS)
+            - --leader-election
+            - --timeout=120s
+            - --v=2
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+        - name: csi-snapshotter
+          image: public.ecr.aws/eks-distro/kubernetes-csi/external-snapshotter:v6.2.0-eks-1-28-0
+          args:
+            - --csi-address=$(ADDRESS)
+            - --leader-election
+            - --timeout=300s
+            - --v=2
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+        - name: liveness-probe
+          image: public.ecr.aws/eks-distro/kubernetes-csi/livenessprobe:v2.9.0-eks-1-28-0
+          args:
+            - --csi-address=$(ADDRESS)
+            - --health-port=9808
+            - --v=2
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: ebs.csi.aws.com
+spec:
+  attachRequired: true
+  podInfoOnMount: true
+  volumeLifecycleModes:
+    - Persistent
+  fsGroupPolicy: File
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-sc
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+parameters:
+  type: gp3
+  encrypted: "true"
+  # kmsKeyId: <KMS_KEY_ID>  # Uncomment and set from Terraform output
+  fsType: ext4
+

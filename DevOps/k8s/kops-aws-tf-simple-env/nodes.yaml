@@ -1,0 +1,51 @@
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  name: nodes
+  labels:
+    kops.k8s.io/cluster: kops-simple-cluster.k8s.local
+spec:
+  role: Node
+  image: 099720109477/ubuntu/images/h2-2023/ubuntu-jammy-22.04-amd64-server-20231004
+  minSize: 1
+  maxSize: 2
+  machineType: t3.medium
+  rootVolumeSize: 50
+  rootVolumeType: gp3
+  rootVolumeEncryption: true
+  # Use KMS key from Terraform output
+  # rootVolumeKmsKeyId: <KMS_KEY_ID>
+  subnets:
+    - ap-southeast-1a
+    - ap-southeast-1b
+  zones:
+    - ap-southeast-1a
+    - ap-southeast-1b
+  # IAM instance profile from Terraform
+  # iam:
+  #   profile: <WORKER_NODE_INSTANCE_PROFILE>
+  # Security groups from Terraform
+  # additionalSecurityGroups:
+  #   - <WORKER_NODE_SECURITY_GROUP_ID>
+  # Additional user data for hardening
+  additionalUserData:
+    - name: hardening.sh
+      type: text/x-shellscript
+      content: |
+        #!/bin/bash
+        # Security hardening
+        set -e
+        
+        # Disable password authentication
+        sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+        
+        # Enable audit logging
+        systemctl enable auditd
+        systemctl start auditd
+        
+        # Configure fail2ban
+        apt-get update
+        apt-get install -y fail2ban
+        systemctl enable fail2ban
+        systemctl start fail2ban
+
